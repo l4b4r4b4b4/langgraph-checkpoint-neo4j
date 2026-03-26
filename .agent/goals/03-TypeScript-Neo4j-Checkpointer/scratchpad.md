@@ -76,12 +76,17 @@ A substantial first-pass TypeScript implementation now exists under
 
 ### Validation status
 
-The implementation was run against the upstream TS checkpoint validation suite.
+The TypeScript test strategy is now explicitly split across two runners:
 
-**Result:** `699 / 714` tests passing (**97.9%**)
+- **Bun smoke/regression tests** (fast, Bun-native): `packages/ts/src/tests/validate.test.ts`
+- **Upstream validation suite under Vitest/Node** (framework-compatible): `packages/ts/tests/validation.vitest.ts`
 
-This is a strong first milestone: the implementation is no longer a placeholder
-and already passes the overwhelming majority of the official validation suite.
+**Current status:**
+- **Bun smoke tests:** `6 / 6` passing
+- **Upstream validation (Vitest/Node):** `714 / 714` passing (**100%**)
+
+After targeted saver fixes and runner split, functional behavior and validation
+coverage are both green.
 
 ## Success Criteria
 
@@ -218,60 +223,24 @@ The majority of the suite passed immediately after first implementation:
 - delete thread behavior
 - write storage behavior for many cases
 
-### Remaining failures
-There are **15** known remaining failures.
+### Current runner compatibility and coverage status
 
-#### Category 1: Bun / assertion-framework compatibility (`8` failures)
-These failures come from validation tests written like:
+There are currently **no known saver-behavior failures** in the TypeScript
+validation matrix.
 
-- `expect(async () => ...).rejects.toThrow()`
+#### Bun runner status
+- Bun remains the primary local runtime for package development.
+- Bun executes a focused smoke/regression suite (`6 / 6` passing).
 
-In Bun's test runner this pattern is treated differently than in the framework
-the validation suite appears to expect.
+#### Upstream parity status
+- The official `@langchain/langgraph-checkpoint-validation` suite now runs
+  under Vitest/Node and passes fully (`714 / 714`).
+- This avoids Bun assertion API mismatches (`expect.soft`, async-function
+  `rejects` style) while preserving full upstream conformance coverage.
 
-Observed symptom:
-- tests fail with messages like "Expected promise, Received AsyncFunction"
-
-Interpretation:
-- our implementation likely throws correctly
-- the test suite assertion style is not fully portable to Bun as-is
-
-#### Category 2: Pending sends migration assertions (`4` failures)
-Observed behavior:
-- `__pregel_tasks` appears in `channel_values` and `channel_versions`
-  after pending-send migration
-
-Validation expectation:
-- certain test cases expect the checkpoint object without those migrated fields
-
-Interpretation:
-- either:
-  1. our pending sends migration in TS is slightly too eager, or
-  2. the upstream TS Postgres implementation handles this subtly differently
-     than our Python-based port
-
-This needs code-level comparison against the upstream TS Postgres implementation.
-
-#### Category 3: `thread_id` undefined edge cases (`2` failures)
-Observed behavior:
-- current guard logic throws when `thread_id` is missing / undefined
-
-Validation expectation:
-- some retrieval paths expect `undefined` result rather than a thrown error
-
-Interpretation:
-- input validation needs to be method-specific:
-  - `put()` / `putWrites()` should likely throw on invalid config
-  - `getTuple()` may need to return `undefined` for certain malformed cases
-    instead of throwing
-
-#### Category 4: `expect.soft()` not available in Bun (`1` failure)
-Observed behavior:
-- one validation test uses `expect.soft(...)`
-- Bun's test runner does not expose that API
-
-Interpretation:
-- another test-framework compatibility issue, not a core saver logic issue
+#### Resolved saver behavior items
+- ✅ Pending sends migration alignment with upstream TS Postgres (`checkpoint.v < 4` gate)
+- ✅ `getTuple()` malformed `thread_id` handling (`undefined` instead of throw)
 
 ## Known Risks / Open Questions
 
@@ -310,13 +279,18 @@ Once we want TS work to become release-driving, CI needs a deliberate policy:
 ## Proposed Next Steps
 
 ### Short-term next task for Goal 03
-1. Re-run and categorize the 15 failures carefully
-2. Fix method-specific malformed-config behavior:
-   - probably `getTuple()` should not throw for some invalid cases
-3. Compare pending sends migration logic against upstream TS Postgres
-4. Decide how to handle validation-suite Bun incompatibilities:
-   - patch test wrapper locally
-   - or run validation under a different runner if needed
+1. Keep the split testing strategy stable:
+   - `bun run test:bun` for Bun smoke/regression checks
+   - Vitest/Node for upstream conformance (`714 / 714`)
+2. Keep CI/release guardrails intact:
+   - Bun smoke tests must stay green
+   - Vitest upstream validation must stay green
+   - TS publish flow must enforce package name/version/private gates
+3. Continue parity work only when new upstream changes introduce real behavior deltas
+4. Keep documentation synchronized across:
+   - `packages/ts/README.md`
+   - root `README.md`
+   - this goal scratchpad
 
 ### Medium-term
 5. Add a dedicated `packages/ts/tests/` structure
@@ -348,15 +322,24 @@ Even with the strong TS progress, **Goal 02 remains the main next milestone**:
 #### Concrete outcomes
 - `packages/ts/src/index.ts` implemented
 - `packages/ts/src/cypher.ts` created
-- `packages/ts/src/tests/validate.test.ts` created
-- TS package now has real dependencies and build metadata
-- Validation result: **699 / 714 passing**
+- `packages/ts/src/tests/validate.test.ts` now serves as Bun-native smoke/regression coverage
+- `packages/ts/tests/validation.vitest.ts` added for upstream validation under Vitest/Node
+- TS package has full dependency/build/test metadata plus publish-ready metadata
+- Validation result (initial): **699 / 714 passing**
+- Validation result (Bun smoke suite): **6 / 6 passing**
+- Validation result (upstream validation via Vitest/Node): **714 / 714 passing**
+- CI/release workflows updated for dual-runner TS testing and Neo4j image tag `neo4j:2026-community`
+- TS release hardening completed:
+  - `prepublishOnly` guard pipeline
+  - release workflow publishability checks (name/version/private)
+  - package-level publish checklist documentation
+  - root README TypeScript release quickstart documentation
 
 #### Important conclusions
-- The TS implementation is no longer speculative — it is already mostly working
-- Remaining failures are small and tractable
-- Some failures are Bun test-runner compatibility issues, not necessarily saver bugs
-- This work should be preserved and continued, but Python parity still comes first
+- The TS implementation is no longer speculative — it is functionally validated and operationally hardened.
+- Upstream parity validation is now fully green via Vitest/Node, while Bun keeps fast local smoke confidence.
+- Release-readiness is now materially improved with workflow/package guardrails and explicit documentation.
+- Python parity remains the release-driving priority for `v0.0.1`, with TS now in a stable parallel track.
 
 ---
 ## Handoff Notes

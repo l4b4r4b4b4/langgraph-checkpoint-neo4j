@@ -5,6 +5,21 @@
   "type": "module",
   "description": "Neo4j checkpointer for LangGraph — drop-in replacement for the Postgres checkpointer",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j.git",
+    "directory": "packages/ts"
+  },
+  "homepage": "https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j#readme",
+  "bugs": {
+    "url": "https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j/issues"
+  },
+  "keywords": [
+    "langgraph",
+    "neo4j",
+    "checkpoint",
+    "agent"
+  ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -15,8 +30,13 @@
   },
   "scripts": {
     "build": "tsc",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "test": "bun run test:bun",
+    "test:bun": "bun test",
+    "test:validation": "vitest run --config vitest.config.ts",
+    "test:all": "bun run test:bun && bun run test:validation",
+    "typecheck": "tsc --noEmit",
+    "release:guard": "node --input-type=module -e \"import { readFileSync } from 'node:fs'; const packageManifest = JSON.parse(readFileSync('./package.json', 'utf8')); if (packageManifest.private) throw new Error('Cannot publish while private=true'); if (packageManifest.version === '0.0.0') throw new Error('Refusing to publish version 0.0.0');\"",
+    "prepublishOnly": "bun run release:guard && bun run test:all && bun run build"
   },
   "dependencies": {
     "neo4j-driver": "^5.28.0",
@@ -29,6 +49,15 @@
     "@langchain/core": "^1.0.1",
     "@langchain/langgraph-checkpoint-validation": "^1.0.0",
     "bun-types": "^1.3.11",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
   }
 }
