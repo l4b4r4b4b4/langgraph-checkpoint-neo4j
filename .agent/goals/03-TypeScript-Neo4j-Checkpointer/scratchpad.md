@@ -37,7 +37,7 @@ A TypeScript implementation would make the repo a true polyglot Neo4j
 checkpointer project:
 
 - Python users get `langgraph-checkpoint-neo4j`
-- TypeScript / Bun users get `@langgraph/checkpoint-neo4j`
+- TypeScript / Bun users get `@luke_skywalker88/langgraph-checkpoint-neo4j`
 
 This is especially useful for teams already running Neo4j in agent systems and
 wanting a single persistence backend across Python and JS runtimes.
@@ -67,7 +67,9 @@ A substantial first-pass TypeScript implementation now exists under
   - Cypher constants and migrations extracted into their own module
   - mirrors the proven Python Cypher implementation
 - `packages/ts/src/tests/validate.test.ts`
-  - validation test wired to
+  - Bun smoke/regression coverage
+- `packages/ts/tests/validation.vitest.ts`
+  - upstream validation suite wired to
     `@langchain/langgraph-checkpoint-validation`
 - `packages/ts/package.json`
   - real package metadata and dependencies added
@@ -107,7 +109,7 @@ coverage are both green.
 ### Release criteria
 - [ ] Package is no longer marked `private`
 - [ ] Versioning and npm publish workflow decided
-- [ ] Published to npm as `@langgraph/checkpoint-neo4j`
+- [ ] Published to npm as `@luke_skywalker88/langgraph-checkpoint-neo4j`
 
 ## Files and Structure
 
@@ -141,7 +143,7 @@ packages/ts/
 
 ### Current package state
 - version: `0.0.0`
-- `private: true`
+- `private: false` (release-prepared for npm publish)
 - build output configured to `dist/`
 - exports configured for ESM + types
 

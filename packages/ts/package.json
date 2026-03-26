@@ -1,5 +1,5 @@
 {
-  "name": "@langgraph/checkpoint-neo4j",
+  "name": "@luke_skywalker88/langgraph-checkpoint-neo4j",
   "version": "0.0.0",
   "private": false,
   "type": "module",

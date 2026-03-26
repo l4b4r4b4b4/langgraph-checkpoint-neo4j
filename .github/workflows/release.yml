@@ -191,7 +191,7 @@ jobs:
           fi
 
           PKG_NAME=$(jq -r '.name' package.json)
-          if [[ "$PKG_NAME" != "@langgraph/checkpoint-neo4j" ]]; then
+          if [[ "$PKG_NAME" != "@luke_skywalker88/langgraph-checkpoint-neo4j" ]]; then
             echo "❌ Unexpected package name for npm publish: ${PKG_NAME}"
             exit 1
           fi

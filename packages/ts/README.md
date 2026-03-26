@@ -1,4 +1,4 @@
-# `@langgraph/checkpoint-neo4j` (TypeScript)
+# `@luke_skywalker88/langgraph-checkpoint-neo4j` (TypeScript)
 
 Neo4j checkpointer for LangGraph.js.
 
@@ -24,7 +24,7 @@ bun install
 ## Usage
 
 ```ts
-import { Neo4jSaver } from "@langgraph/checkpoint-neo4j";
+import { Neo4jSaver } from "@luke_skywalker88/langgraph-checkpoint-neo4j";
 
 const saver = Neo4jSaver.fromConnString("bolt://localhost:7687", {
   username: "neo4j",

@@ -1,12 +1,12 @@
 /**
- * @langgraph/checkpoint-neo4j
+ * @luke_skywalker88/langgraph-checkpoint-neo4j
  *
  * Neo4j checkpointer for LangGraph — TypeScript implementation.
  * Drop-in replacement for the official Postgres checkpointer.
  *
  * @example
  * ```ts
- * import { Neo4jSaver } from "@langgraph/checkpoint-neo4j";
+ * import { Neo4jSaver } from "@luke_skywalker88/langgraph-checkpoint-neo4j";
  *
  * const checkpointer = Neo4jSaver.fromConnString(
  *   "bolt://localhost:7687",

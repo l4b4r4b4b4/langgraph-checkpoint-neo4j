@@ -13,7 +13,7 @@
       "version": "0.0.1",
     },
     "packages/ts": {
-      "name": "@langgraph/checkpoint-neo4j",
+      "name": "@luke_skywalker88/langgraph-checkpoint-neo4j",
       "version": "0.0.0",
       "dependencies": {
         "@langchain/langgraph-checkpoint": "^1.0.0",
@@ -94,7 +94,7 @@
 
     "@langchain/langgraph-checkpoint-validation": ["@langchain/langgraph-checkpoint-validation@1.0.9", "", { "dependencies": { "vitest": "^3.2.4", "yargs": "^17.7.2", "zod": "^3.25.76 || ^4" }, "peerDependencies": { "@langchain/core": "^1.0.1", "@langchain/langgraph-checkpoint": "^1.0.0" }, "bin": { "validate-checkpointer": "bin/cli.js" } }, "sha512-YtrlcJ9cEXrPh5Skvo/Ocl41hMepRJAqWd/lJETNV0as5qtDA+MVgpWFWUF3bPZ8ETq+Nps/DG0yi1fThTDTfA=="],
 
-    "@langgraph/checkpoint-neo4j": ["@langgraph/checkpoint-neo4j@workspace:packages/ts"],
+    "@luke_skywalker88/langgraph-checkpoint-neo4j": ["@luke_skywalker88/langgraph-checkpoint-neo4j@workspace:packages/ts"],
 
     "@rollup/rollup-android-arm-eabi": ["@rollup/rollup-android-arm-eabi@4.60.0", "", { "os": "android", "cpu": "arm" }, "sha512-WOhNW9K8bR3kf4zLxbfg6Pxu2ybOUbB2AjMDHSQx86LIF4rH4Ft7vmMwNt0loO0eonglSNy4cpD3MKXXKQu0/A=="],
 

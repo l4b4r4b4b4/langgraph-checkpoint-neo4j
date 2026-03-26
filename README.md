@@ -6,7 +6,7 @@ Drop-in replacement for the official Postgres checkpointer, backed by Neo4j's gr
 
 [![CI](https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j/actions/workflows/ci.yml/badge.svg)](https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/pypi/v/langgraph-checkpoint-neo4j?label=pypi)](https://pypi.org/project/langgraph-checkpoint-neo4j/)
-[![npm](https://img.shields.io/npm/v/@langgraph/checkpoint-neo4j)](https://www.npmjs.com/package/@langgraph/checkpoint-neo4j)
+[![npm](https://img.shields.io/npm/v/@luke_skywalker88/langgraph-checkpoint-neo4j)](https://www.npmjs.com/package/@luke_skywalker88/langgraph-checkpoint-neo4j)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -20,7 +20,7 @@ LangGraph ships with checkpointers for Postgres, SQLite, MongoDB, and Redis — 
 - **Full `BaseCheckpointSaver` implementation** — passes the official LangGraph conformance test suite
 - **Sync and async** — both `Neo4jSaver` and `AsyncNeo4jSaver` (Python), `Neo4jSaver` (TypeScript)
 - **Graph-native storage** — checkpoints, checkpoint writes, and metadata stored as Neo4j nodes and relationships
-- **Dual-language monorepo** — Python (`langgraph-checkpoint-neo4j`) and TypeScript (`@langgraph/checkpoint-neo4j`) from one repo
+- **Dual-language monorepo** — Python (`langgraph-checkpoint-neo4j`) and TypeScript (`@luke_skywalker88/langgraph-checkpoint-neo4j`) from one repo
 - **Tested against upstream** — reference tests adapted from the official `checkpoint-postgres` packages
 
 ## Quick Start
@@ -55,11 +55,11 @@ async with AsyncNeo4jSaver.from_conn_string("bolt://localhost:7687", auth=("neo4
 ### TypeScript
 
 ```bash
-npm install @langgraph/checkpoint-neo4j
+npm install @luke_skywalker88/langgraph-checkpoint-neo4j
 ```
 
 ```typescript
-import { Neo4jSaver } from "@langgraph/checkpoint-neo4j";
+import { Neo4jSaver } from "@luke_skywalker88/langgraph-checkpoint-neo4j";
 
 const checkpointer = Neo4jSaver.fromConnString(
   "bolt://localhost:7687",
@@ -84,7 +84,7 @@ langgraph-checkpoint-neo4j/
 │   │   │   └── aio.py                  #   Async checkpointer (AsyncNeo4jSaver)
 │   │   ├── tests/                      #   Pytest suite
 │   │   └── pyproject.toml
-│   └── ts/                             # TypeScript package (@langgraph/checkpoint-neo4j)
+│   └── ts/                             # TypeScript package (@luke_skywalker88/langgraph-checkpoint-neo4j)
 │       ├── src/
 │       │   ├── index.ts                #   Neo4jSaver implementation
 │       │   ├── cypher.ts               #   Cypher queries + migrations
@@ -192,7 +192,7 @@ git submodule update --remote
 
 ## TypeScript Release Quickstart (Guarded npm Publish)
 
-Use this flow for releasing `@langgraph/checkpoint-neo4j` safely:
+Use this flow for releasing `@luke_skywalker88/langgraph-checkpoint-neo4j` safely:
 
 1. **Prepare release PR**
    - Update `packages/ts/package.json` version to the target release version.
@@ -214,7 +214,7 @@ Use this flow for releasing `@langgraph/checkpoint-neo4j` safely:
    - The tag triggers `.github/workflows/release.yml` (`publish-ts` job).
    - Guard checks will fail publish if:
      - tag version != `packages/ts/package.json` version
-     - package name is not `@langgraph/checkpoint-neo4j`
+     - package name is not `@luke_skywalker88/langgraph-checkpoint-neo4j`
      - `"private": true`
    - Workflow then runs:
      - Bun smoke tests
