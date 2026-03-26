@@ -1,0 +1,63 @@
+{
+  "terminal": {
+    "env": {
+      "PYTHONPATH": "./packages/python:./packages/python/src",
+    },
+  },
+  "lsp": {
+    "pyright": {
+      "settings": {
+        "python.pythonPath": "packages/python/.venv/bin/python",
+        "python.analysis": {
+          "extraPaths": ["packages/python/src"],
+          "diagnosticMode": "workspace",
+          "typeCheckingMode": "standard",
+        },
+      },
+    },
+  },
+  "languages": {
+    "Python": {
+      "format_on_save": "on",
+      "formatter": {
+        "external": {
+          "command": "ruff",
+          "arguments": ["format", "-"],
+        },
+      },
+      "language_servers": ["pyright"],
+    },
+  },
+  "context_servers": {
+    "nixos": {
+      "command": "uvx",
+      "args": ["mcp-nixos"],
+    },
+    "pypi": {
+      "command": "uvx",
+      "args": ["pypi-query-mcp-server"],
+    },
+    "supabase-local-dev-server": {
+      "command": "bunx",
+      "args": ["mcp-remote", "http://127.0.0.1:54321/mcp"],
+    },
+    "docs-langchain": {
+      "command": "bunx",
+      "args": ["mcp-remote", "https://docs.langchain.com/mcp"],
+    },
+    "gitnexus": {
+      "command": "bunx",
+      "args": ["-y", "gitnexus@latest", "mcp"],
+    },
+    "youtube-data": {
+      "command": "uvx",
+      "args": ["yt-api-mcp", "stdio"],
+      "env": {
+        "LANGFUSE_PUBLIC_KEY": "",
+        "LANGFUSE_SECRET_KEY": "",
+        "LANGFUSE_HOST": "https://cloud.langfuse.com",
+        "PYTHONUNBUFFERED": "1",
+      },
+    },
+  },
+}
