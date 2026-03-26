@@ -8,5 +8,8 @@
   "scripts": {
     "build": "echo 'No build step yet'",
     "test": "echo 'No tests yet (bootstrap placeholder)'"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
   }
 }
