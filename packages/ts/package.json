@@ -31,7 +31,7 @@
   "scripts": {
     "build": "tsc",
     "test": "bun run test:bun",
-    "test:bun": "bun test",
+    "test:bun": "bun test src/tests",
     "test:validation": "vitest run --config vitest.config.ts",
     "test:all": "bun run test:bun && bun run test:validation",
     "typecheck": "tsc --noEmit",
