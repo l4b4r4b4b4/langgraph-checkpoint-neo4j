@@ -87,10 +87,14 @@ langgraph-checkpoint-neo4j/
 │   └── ts/                             # TypeScript package (@langgraph/checkpoint-neo4j)
 │       ├── src/
 │       │   ├── index.ts                #   Neo4jSaver implementation
-│       │   └── migrations.ts           #   Schema setup queries
-│       ├── tests/                      #   Test suite
+│       │   ├── cypher.ts               #   Cypher queries + migrations
+│       │   └── tests/
+│       │       └── validate.test.ts    #   Bun smoke/regression tests
+│       ├── tests/
+│       │   └── validation.vitest.ts    #   Upstream validation suite (Vitest/Node)
 │       ├── package.json
-│       └── tsconfig.json
+│       ├── tsconfig.json
+│       └── vitest.config.ts
 ├── vendor/                             # Git submodules (reference implementations)
 │   ├── langgraph-py/                   #   langchain-ai/langgraph (Python)
 │   └── langgraph-js/                   #   langchain-ai/langgraphjs (TypeScript)
@@ -139,14 +143,20 @@ This starts a Neo4j instance on `bolt://localhost:7687` with credentials `neo4j`
 ### Run Tests
 
 ```bash
-# All tests
+# All tests (Python + TS Bun smoke layer)
 bun run test
 
 # Python only
 bun run test:python
 
-# TypeScript only
+# TypeScript Bun smoke/regression tests only
 bun run test:ts
+
+# TypeScript upstream official validation suite (Vitest/Node)
+bun run test:ts:validation
+
+# Both TypeScript layers (Bun smoke + upstream validation)
+bun run test:ts:all
 ```
 
 ### Lint & Format
@@ -179,6 +189,40 @@ git submodule update --remote
 4. Implement against the tests
 5. Ensure `bun run test` passes
 6. Open a PR
+
+## TypeScript Release Quickstart (Guarded npm Publish)
+
+Use this flow for releasing `@langgraph/checkpoint-neo4j` safely:
+
+1. **Prepare release PR**
+   - Update `packages/ts/package.json` version to the target release version.
+   - Set `"private": false` in `packages/ts/package.json` only when release is actually ready.
+   - Keep `bun.lock` committed and up to date.
+
+2. **Run required checks**
+   - From repo root:
+     - `bun run test:ts:all`
+   - From `packages/ts`:
+     - `bun run typecheck`
+     - `bun run build`
+
+3. **Tag release**
+   - Create and push a tag in this format:
+     - `ts-vX.Y.Z`
+
+4. **Let release workflow publish**
+   - The tag triggers `.github/workflows/release.yml` (`publish-ts` job).
+   - Guard checks will fail publish if:
+     - tag version != `packages/ts/package.json` version
+     - package name is not `@langgraph/checkpoint-neo4j`
+     - `"private": true`
+   - Workflow then runs:
+     - Bun smoke tests
+     - Upstream validation suite (Vitest/Node)
+     - npm publish
+
+5. **If release is delayed**
+   - Revert `"private"` back to `true` on non-release branches to prevent accidental publish.
 
 ## License
 

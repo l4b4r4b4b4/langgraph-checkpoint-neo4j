@@ -63,7 +63,7 @@ jobs:
 
     services:
       neo4j:
-        image: neo4j:5-community
+        image: neo4j:2026-community
         ports:
           - 7687:7687
           - 7474:7474
@@ -148,7 +148,7 @@ jobs:
 
     services:
       neo4j:
-        image: neo4j:5-community
+        image: neo4j:2026-community
         ports:
           - 7687:7687
           - 7474:7474
@@ -170,12 +170,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: .bun-version
 
-      - name: Verify version matches tag
+      - name: Verify version matches tag and publishability
         run: |
           PKG_VERSION=$(jq -r '.version' package.json)
           TAG_VERSION="${{ needs.meta.outputs.version }}"
@@ -183,7 +188,20 @@ jobs:
             echo "❌ Version mismatch: package.json=${PKG_VERSION}, tag=${TAG_VERSION}"
             exit 1
           fi
-          echo "✅ Version verified: ${TAG_VERSION}"
+
+          PKG_NAME=$(jq -r '.name' package.json)
+          if [[ "$PKG_NAME" != "@langgraph/checkpoint-neo4j" ]]; then
+            echo "❌ Unexpected package name for npm publish: ${PKG_NAME}"
+            exit 1
+          fi
+
+          PKG_PRIVATE=$(jq -r '.private // false' package.json)
+          if [[ "$PKG_PRIVATE" == "true" ]]; then
+            echo "❌ package.json has private=true. Refusing npm publish."
+            exit 1
+          fi
+
+          echo "✅ Version and publishability verified: ${TAG_VERSION}"
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
@@ -203,8 +221,11 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests
-        run: bun test
+      - name: Run Bun smoke tests
+        run: bun run test:bun
+
+      - name: Run upstream validation suite (Vitest/Node)
+        run: bun x vitest run --config vitest.config.ts
 
       - name: Build
         run: bun run build

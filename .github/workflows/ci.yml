@@ -85,7 +85,7 @@ jobs:
 
     services:
       neo4j:
-        image: neo4j:5-community
+        image: neo4j:2026-community
         ports:
           - 7687:7687
           - 7474:7474
@@ -187,7 +187,7 @@ jobs:
 
     services:
       neo4j:
-        image: neo4j:5-community
+        image: neo4j:2026-community
         ports:
           - 7687:7687
           - 7474:7474
@@ -209,6 +209,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Set up Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -229,8 +234,11 @@ jobs:
             sleep 2
           done
 
-      - name: Run tests
-        run: bun run test
+      - name: Run Bun smoke tests
+        run: bun run test:bun
+
+      - name: Run upstream validation suite (Vitest/Node)
+        run: bun x vitest run --config vitest.config.ts
 
   # ── Summary Gate ──────────────────────────────────────────────────────
   # Branch protection should require this single job.

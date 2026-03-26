@@ -42,6 +42,7 @@ import {
   WRITES_IDX_MAP,
   getCheckpointId,
   TASKS,
+  maxChannelVersion,
 } from "@langchain/langgraph-checkpoint";
 
 import type { RunnableConfig } from "@langchain/core/runnables";
@@ -270,8 +271,12 @@ class Neo4jSaver extends BaseCheckpointSaver<number> {
   async getTuple(
     config: RunnableConfig
   ): Promise<CheckpointTuple | undefined> {
-    const configurable = getConfigurable(config);
-    const threadId = configurable.thread_id;
+    const configurable = (config as Record<string, unknown>)
+      .configurable as Configurable | undefined;
+    const threadId = configurable?.thread_id;
+    if (!threadId) {
+      return undefined;
+    }
     const checkpointNs = configurable.checkpoint_ns ?? "";
     const checkpointId = getCheckpointId(config);
 
@@ -706,10 +711,10 @@ class Neo4jSaver extends BaseCheckpointSaver<number> {
     }));
     const pendingWrites = await this._loadWrites(writeRecords);
 
-    // Handle pending sends migration: if there is a parent checkpoint,
-    // look for TASKS writes on the parent and attach them as channel
-    // values on this checkpoint.
-    if (parentCheckpointId) {
+    // Handle pending sends migration only for legacy checkpoints.
+    // This mirrors upstream Postgres behavior and avoids mutating
+    // modern checkpoints that should already be in post-migration shape.
+    if (checkpointDict.v < 4 && parentCheckpointId) {
       const sendsResult = await session.run(GET_PENDING_SENDS_CYPHER, {
         thread_id: threadId,
         checkpoint_ids: [parentCheckpointId],
@@ -781,6 +786,9 @@ class Neo4jSaver extends BaseCheckpointSaver<number> {
   ): Promise<void> {
     if (pendingSends.length === 0) return;
 
+    checkpoint.channel_values ??= {};
+    checkpoint.channel_versions ??= {};
+
     // Deserialize sends and add them to channel_values.
     const deserialized: unknown[] = [];
     for (const [typeStr, blobData] of pendingSends) {
@@ -790,19 +798,11 @@ class Neo4jSaver extends BaseCheckpointSaver<number> {
     checkpoint.channel_values[TASKS] = deserialized;
 
     // Add a version entry for the TASKS channel.
-    const versionValues = Object.values(checkpoint.channel_versions);
-    if (versionValues.length > 0) {
-      // Use the max of existing versions.
-      let maxVersion: string | number = versionValues[0];
-      for (const v of versionValues) {
-        if (String(v) > String(maxVersion)) {
-          maxVersion = v;
-        }
-      }
-      checkpoint.channel_versions[TASKS] = maxVersion;
-    } else {
-      checkpoint.channel_versions[TASKS] = this.getNextVersion(undefined);
-    }
+    const versionValues = Object.values(checkpoint.channel_versions) as number[];
+    checkpoint.channel_versions[TASKS] =
+      versionValues.length > 0
+        ? maxChannelVersion(...versionValues)
+        : this.getNextVersion(undefined);
   }
 
   // ── Internal: build list query ───────────────────────────────────────
