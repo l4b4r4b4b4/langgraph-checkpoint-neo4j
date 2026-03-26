@@ -140,6 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: meta
     if: needs.meta.outputs.ts == 'true'
+    environment: npm
     defaults:
       run:
         working-directory: packages/ts
