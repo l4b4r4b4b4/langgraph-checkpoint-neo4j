@@ -230,7 +230,7 @@ jobs:
           done
 
       - name: Run tests
-        run: bun test
+        run: bun run test
 
   # ── Summary Gate ──────────────────────────────────────────────────────
   # Branch protection should require this single job.
