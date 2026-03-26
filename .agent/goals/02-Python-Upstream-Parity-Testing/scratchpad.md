@@ -161,4 +161,51 @@ and could cause test failures:
 
 ## Session Log
 
-_No sessions yet — goal not started._
+### 2026-03-26 — Priority clarification after TS parallel progress 🟢
+
+#### What happened
+- Python parity work has **not started yet**
+- In parallel, substantial TypeScript implementation work was completed under Goal 03
+- The TS checkpointer now has a first real implementation and passes **699 / 714**
+  upstream validation tests
+- This was useful progress, but it does **not** change the next release-driving
+  priority for Python
+
+#### Priority decision
+**Goal 02 remains the next highest-priority engineering task.**
+
+The Python package is already released as `0.0.0`, and the next milestone
+(`v0.0.1`) should still be driven by **upstream parity testing for the Python
+implementation**.
+
+That means the next session should treat the following as the primary work:
+1. study upstream Python checkpoint-postgres tests in the vendor submodule
+2. adapt them to Neo4j fixtures
+3. run them alongside conformance tests
+4. fix any semantic gaps they reveal
+5. only then prepare `v0.0.1`
+
+#### Why this is still the right priority
+The Python package is already published and usable, but conformance alone is not
+the same as high-confidence parity with the upstream Postgres checkpointer.
+
+The TypeScript work, while promising, is still:
+- unpublished
+- not yet CI/release-gating
+- not yet fully validation-clean
+
+So TS should continue only as **parallel / secondary work** unless priorities
+change explicitly.
+
+#### Related progress outside this goal
+Goal 03 now documents the TypeScript implementation status:
+- `Neo4jSaver` implemented
+- Cypher/migrations extracted
+- validation harness wired
+- **699 / 714** upstream validation tests passing
+- remaining failures are mostly Bun test-runner compatibility issues plus a few
+  saver edge cases
+
+#### Immediate next step for Goal 02
+Start **Task 01: Study Upstream Tests** and turn the preliminary task list in
+this file into a concrete file-by-file adaptation plan.

@@ -8,7 +8,7 @@
 |---|------|--------|----------|---------|-------|
 | 01 | Python Neo4j Checkpointer (v0.0.0) | 🟢 Complete + Released | P0 | 2026-03-26 | v0.0.0 published to PyPI, 59/59 conformance, 87.75% coverage |
 | 02 | Python Upstream Parity Testing (v0.0.1) | ⚪ Not Started | P0 | — | Adapt upstream checkpoint-postgres tests for Neo4j; drives v0.0.1 |
-| 03 | TypeScript Neo4j Checkpointer (v0.0.1) | ⚪ Not Started | P1 | — | After Python parity is proven, port to TS |
+| 03 | TypeScript Neo4j Checkpointer (v0.0.1) | 🟡 In Progress | P1 | 2026-03-26 | `Neo4jSaver` implemented; 699/714 upstream validation tests passing |
 | 04 | PyPI + npm Publishing Pipeline | 🟢 Complete | P2 | 2026-03-26 | Tag-triggered release.yml with OIDC PyPI publish; GitHub Release auto-created |
 
 ## Release History
@@ -19,6 +19,13 @@
 
 ## Recent Activity
 
+- **2026-03-26** — **TypeScript Neo4j checkpointer first implementation completed** 🟡
+  - `packages/ts/src/index.ts` now contains a real `Neo4jSaver` implementation extending `BaseCheckpointSaver<number>`
+  - `packages/ts/src/cypher.ts` created with Neo4j migrations and Cypher query constants mirrored from the Python implementation
+  - `packages/ts/src/tests/validate.test.ts` created and wired to `@langchain/langgraph-checkpoint-validation`
+  - Runtime deps added: `neo4j-driver`, `@langchain/langgraph-checkpoint`
+  - Validation result against local Neo4j: **699 / 714 passing** (**97.9%**)
+  - Remaining 15 failures are mostly Bun test-runner / validation-suite compatibility issues plus a small number of saver edge cases
 - **2026-03-26** — **v0.0.0 published to PyPI** 🎉
   - Tag `python-v0.0.0` pushed → `release.yml` triggered → PyPI publish via OIDC ✅ → GitHub Release created ✅
   - Package: https://pypi.org/project/langgraph-checkpoint-neo4j/0.0.0/
@@ -55,13 +62,18 @@
    - Adapt upstream `vendor/langgraph-py/libs/checkpoint-postgres/tests/` to Neo4j fixtures
    - Run alongside conformance tests to find subtle semantic differences
    - Gate v0.0.1 release on both conformance + parity suite passing
-   - This is the main engineering work for the next milestone
+   - This remains the main engineering work for the next Python release
 
-2. **Apply GitHub branch protections in UI**
+2. **Goal 03 — TypeScript Checkpointer**
+   - Continue from the current 699 / 714 validation-test baseline
+   - Fix the remaining 15 failures:
+     - Bun `expect(...).rejects` compatibility behavior
+     - `expect.soft()` not available in Bun
+     - pending sends migration assertions
+     - malformed / undefined `thread_id` edge cases
+   - Decide whether to keep running the upstream validation suite under Bun or use a different runner for full compatibility
+
+3. **Apply GitHub branch protections in UI**
    - JSON rulesets exist in-repo (`.github/rulesets/main.json`, `.github/rulesets/feature.json`)
    - Need to be confirmed in GitHub Settings → Rulesets
    - Protect `main`: require PR, rebase-only merges, require `CI Success` status check
-
-3. **Goal 03 — TypeScript Checkpointer**
-   - After Python parity is proven, port to TS
-   - Bootstrap package already exists at `packages/ts/`
