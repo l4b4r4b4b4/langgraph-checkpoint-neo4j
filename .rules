@@ -1,0 +1,497 @@
+# .rules for langgraph-checkpoint-neo4j
+
+This file defines **hard** (must-follow) and **soft** (recommended) rules for langgraph-checkpoint-neo4j development. This repository is a polyglot monorepo (Python + TypeScript) that implements a Neo4j-backed checkpointer for LangGraph — a drop-in replacement for the official Postgres checkpointer. These guidelines maximize code quality, safety, and effective AI assistant collaboration.
+
+---
+
+## General Rules
+
+### Hard Rules
+- **No sensitive data exposure** in logs, errors, or code
+- **All changes require review** before merging to main
+- **Never execute untrusted code** or arbitrary downloads
+- **Cite external sources** when adapting code
+- **Document all public APIs** with docstrings and examples
+- **Principle of least privilege** for data, access, and dependencies
+- **No system-altering commands by agents** (nixos-rebuild, nix build, etc.)
+  - Agents may provide commands in code blocks for instruction
+  - User must explicitly approve system state changes
+- **Secrets never committed** to repository
+
+### Soft Rules
+- Prefer declarative, reproducible configurations
+- Document major changes in README/CHANGELOG
+- Use meaningful commit messages (Conventional Commits)
+- Periodically clean `archive/` directories
+- Add comments to non-trivial code
+
+---
+
+## File Editing
+
+### Hard Rules
+- **Prefer edit over overwrite** — Targeted changes unless complete rewrite needed
+- **Preserve existing content** — Add/modify sections, don't replace entire files
+
+### Rationale
+Overwriting loses context, makes diffs harder to review, and risks removing important content.
+
+---
+
+## AI Assistant Communication
+
+### Hard Rules
+- **Never lie or mislead** — Admit uncertainty explicitly
+- **Never appease too quickly** — Challenge ideas, point out flaws
+- **Be brutally honest about tradeoffs** — State costs clearly
+- **Never hide potential issues** — Report risks immediately
+- **Distinguish fact from speculation** clearly
+- **Always** bring up serious doubts about feasibility, practicality, and cost prohibitions
+
+### Soft Rules
+- Be conservative rather than enthusiastic about ideas and visions from the user and yourself
+- Question the users and your own suggestions critically
+- Ask clarifying questions before proposing solutions
+- State assumptions explicitly
+- Warn about complexity upfront
+- Acknowledge simpler alternatives
+
+### Rationale
+Over-confidence leads to flawed ideas, missed edge cases, unfeasible plans, and loss of trust. Professional engineering requires honest, conservative assessment.
+
+---
+
+## Naming Conventions
+
+### Hard Rules
+- **Never use single-letter variable names** — Always descriptive
+- **Never abbreviate names** — `checkpoint_metadata` not `ckpt_meta`
+- **No type encoding** — No Hungarian notation
+- **No "I" prefix on interfaces**
+- **No "Base" or "Abstract" class names** unless extending upstream LangGraph base classes
+- **No "Utils" or "Helper" classes** — Organize into proper modules
+- **Include units in names** only when types can't encode them
+
+### Soft Rules
+- Prefer longer, descriptive names
+- If struggling to name, consider if structure is the problem
+
+---
+
+## Python Rules
+
+### Hard Rules
+- **PEP8 formatting** mandatory
+- **Type annotations required** for all public functions/methods/classes
+- **Pydantic models** for public API data structures where appropriate
+- **Explicit exception handling** — no bare `except:`
+- **`__all__` alphabetically sorted** (Ruff RUF022)
+- **Support Python >=3.11,<4.0** — test on 3.11 and 3.12
+
+### Soft Rules
+- Type hints for non-trivial internal variables
+- Use Python 3.12+ features where appropriate
+- Minimal, explicit imports (no wildcards)
+- Prefer `Protocol` over ABC for interfaces
+- Follow upstream LangGraph patterns and conventions for consistency
+
+---
+
+## TypeScript Rules
+
+### Hard Rules
+- **Strict mode enabled** — `"strict": true` in tsconfig.json
+- **Type annotations** for all public APIs
+- **Use ESNext modules** — `"module": "ESNext"` in tsconfig.json
+- **Bun test runner** for tests
+- **Follow upstream LangGraphJS patterns** for consistency
+
+### Soft Rules
+- Prefer `interface` over `type` for public API shapes
+- Use `readonly` for immutable properties
+- Prefer `async/await` over raw promises
+- Keep dependencies minimal — Neo4j driver + LangGraph checkpoint base only
+
+---
+
+## Dependency Management
+
+### Python (UV)
+
+#### Hard Rules
+- **Use `uv` exclusively** — not pip or pip-compile
+- **Runtime deps** in `[project.dependencies]`
+- **Dev deps** in `[dependency-groups.dev]`
+- **Use `uv add/remove`** — never manually edit pyproject.toml deps
+- **Commit pyproject.toml + uv.lock together**
+- **Minimal runtime dependencies** — only `langgraph-checkpoint` and `neo4j`
+
+#### Soft Rules
+- `uv sync` after pulling changes
+- `uv lock --upgrade` for updates
+- Pin critical production dependencies
+
+### TypeScript (Bun)
+
+#### Hard Rules
+- **Use `bun` exclusively** — not npm, yarn, or pnpm
+- **Commit bun.lock** with dependency changes
+- **Minimal runtime dependencies** — only `neo4j-driver` and `@langchain/langgraph-checkpoint`
+
+#### Soft Rules
+- Keep `@types/bun` in sync with `.bun-version`
+- Use `bun install --frozen-lockfile` in CI
+
+### Rationale
+This is a library. Every extra dependency is a burden on consumers. Keep the dependency tree as shallow as possible.
+
+---
+
+## Library Design Principles
+
+### Hard Rules
+- **Interface conformance** — Must implement the full `BaseCheckpointSaver` interface (Python) and equivalent TS interface
+- **Pass conformance tests** — Must pass the official LangGraph checkpoint conformance/validation test suites
+- **Feature parity with Postgres checkpointer** — Support all operations: `get_tuple`, `put`, `put_writes`, `list`, `delete_thread`
+- **Both sync and async** (Python) — Provide `Neo4jSaver` and `AsyncNeo4jSaver`
+- **No LangGraph internals** — Only depend on public APIs from `langgraph-checkpoint`
+- **Thread-safe** — Multiple concurrent graph invocations must not corrupt state
+- **Idempotent setup** — `setup()` must be safe to call multiple times
+
+### Soft Rules
+- Follow the same constructor patterns as the Postgres checkpointer for familiarity
+- Provide `from_conn_string()` factory for easy instantiation
+- Use connection pooling where the Neo4j driver supports it
+- Graceful error messages when Neo4j is unreachable
+- Document Neo4j version requirements
+
+---
+
+## Neo4j Data Model
+
+### Hard Rules
+- **Use Cypher queries** — No OGM or abstraction layers
+- **Parameterized queries only** — Never string-interpolate user data into Cypher
+- **Explicit indexes** — Create indexes in `setup()` for query performance
+- **Atomic writes** — Use Neo4j transactions for multi-statement operations
+- **Clean separation** — Checkpoint nodes, write nodes, and blob nodes should be distinct
+
+### Soft Rules
+- Prefer node properties over separate relationship types where it simplifies queries
+- Use constraints (uniqueness) where applicable
+- Document the graph schema in code comments or a dedicated section
+- Consider using APOC procedures only if absolutely necessary (adds dependency)
+
+---
+
+## Documentation
+
+### Hard Rules
+- **All public APIs have docstrings** (classes, methods, functions, constants)
+- **Include**: summary, parameters, returns, exceptions
+- **Examples** in docstrings for non-trivial APIs
+- **README accuracy** — shown code must work
+
+### Soft Rules
+- Google-style docstrings (Python)
+- TSDoc comments (TypeScript)
+- Document edge cases and gotchas
+- Include "Getting Started" in README
+- Document Neo4j schema and data model
+
+---
+
+## Testing
+
+### Development Approach: Test-Driven (Adapted from Upstream)
+
+**Workflow:** Adapt upstream tests → Implement against them → Extend with Neo4j-specific tests
+
+This project has a clear contract: the LangGraph checkpoint interface. The upstream Postgres tests define exactly what behavior is expected. We adapt those tests to use Neo4j fixtures, then implement until they pass.
+
+1. **Adapt upstream tests** — Copy/adapt from `vendor/langgraph-py/libs/checkpoint-postgres/tests/` and `vendor/langgraph-js/libs/checkpoint-postgres/src/tests/`
+2. **Implement against tests** — Write the checkpointer until tests pass
+3. **Add Neo4j-specific tests** — Edge cases, connection handling, schema setup
+
+### Hard Rules
+- **Test behavior, not implementation** — Tests should survive refactoring
+- **One thing per test** — Focused test cases with clear assertions
+- **Deterministic tests** — Mock time, randomness where needed; real Neo4j for integration
+- **Test error paths** — Connection failures, invalid data, concurrent access
+- **All conformance tests must pass** before any release
+- **Real Neo4j for integration tests** — Use Docker container (docker-compose.yml)
+
+### Soft Rules
+- Use pytest fixtures for Neo4j session/driver lifecycle
+- Descriptive test names that explain what's being tested
+- Test both sync and async variants
+- Test `setup()` idempotency
+- Test concurrent access patterns
+- Mark integration tests that need Neo4j with `@pytest.mark.integration` or similar
+
+---
+
+## Design Patterns
+
+### Hard Rules
+- **No circular dependencies** — Extract third class or use events if detected
+
+### Recommended Patterns
+- **Constructor injection** — Pass Neo4j driver/session for testability
+- **Context manager protocol** — Support `with` / `async with` for resource cleanup
+- **Factory methods** — `from_conn_string()` for convenient construction
+- **Adapter pattern** — Translate between LangGraph checkpoint types and Neo4j storage
+
+### Anti-Patterns (Avoid These)
+- Service locators (hidden dependencies)
+- Global driver instances (breaks testability)
+- Deep inheritance hierarchies (prefer composition)
+
+---
+
+## AI Assistant Workflow
+
+**THIS WORKFLOW APPLIES TO BOTH GOALS AND TASKS** — Follow all 5 steps for each level of work.
+
+### Hard Rules: Development Process
+
+**Step 1: Gather Context & Research**
+- **Problem Space Research:**
+  - Understand the problem thoroughly before looking at solutions
+  - Read relevant files (README, existing code, upstream reference implementations)
+  - Review appropriate scratchpad (goal scratchpad or task scratchpad)
+  - Ask clarifying questions about requirements and constraints
+  - Define success criteria and edge cases
+- **Solution Space Research:**
+  - Study the upstream Postgres checkpointer implementation
+  - Study the LangGraph checkpoint base classes and interfaces
+  - Study Neo4j driver APIs (both Python and JS)
+  - Check if problem is already solved (don't reinvent the wheel)
+  - Look for industry standards and best practices
+- **Critical:** Complete problem understanding BEFORE solution design
+- MUST NOT jump to implementation without approval
+
+**Step 2: Document Plan**
+- Update appropriate scratchpad:
+  - **For Goals:** Update goal scratchpad with objectives, architecture, task breakdown
+  - **For Tasks:** Update task scratchpad with implementation plan, files to modify, test strategy
+  - Document what and why
+  - Architectural decisions and tradeoffs
+  - Files to modify
+  - Success criteria
+- Use TODO lists with checkboxes
+
+**Step 3: Pitch Approach**
+- Describe high-level approach
+- List specific files and changes
+- Explain design decisions and alternatives
+- Identify risks or breaking changes
+- **Wait for user approval before proceeding**
+
+**Step 4: Implement**
+- **For Goals:** Create task directories and scratchpads if multi-task
+- **For Tasks:** Follow the test-driven workflow: adapt upstream tests → implement → extend
+- Small, reviewable changes
+- Run linters after each change, tests before committing
+
+**Step 5: Document & Review**
+- Update docstrings
+- Update README if API changed
+- Add examples
+- **Update scratchpad with completed work** (what was done, not just what will be done)
+- Run full test suite
+
+### Workflow Example
+
+**Goal (Simple):**
+1. Gather context, research upstream implementation
+2. Create `goals/01-Goal-Name/scratchpad.md` with plan
+3. Pitch approach, wait for approval
+4. Implement directly (no tasks needed)
+5. Document completion in goal scratchpad
+
+**Goal (Complex):**
+1. Gather context, research
+2. Create `goals/02-Goal-Name/scratchpad.md` with task breakdown
+3. Pitch approach (including task structure), wait for approval
+4. Create task directories: `Task-01-Name/`, `Task-02-Name/`, etc.
+5. Execute tasks sequentially, each following Steps 1-5
+
+### Proper Tool Usage
+- `read_file` for reading (not cat/head/tail)
+- `edit_file` for modifying (not sed/awk)
+- `grep` tool for searching (not terminal grep)
+- `find_path` for file discovery (not terminal find)
+- **Use appropriate tools for dates** — Never assume dates
+- Terminal ONLY for: tests, linters, builds, package management, git, system checks, date/time queries
+
+### Hard Rules: Code Quality
+- **Python:** Run `ruff check . --fix --unsafe-fixes && ruff format .` before committing
+- **TypeScript:** Run `bunx tsc --noEmit` before committing
+- **Tests must pass** — `bun run test:python` and `bun run test:ts`
+- **No skipping approval** even for "small" changes
+
+### Anti-Pattern: What NOT to Do
+❌ Create task, immediately implement, then document after
+✅ Create task, document plan, get approval, implement, document completion
+
+---
+
+## Session Handoff
+
+### Hard Rules
+- **Provide prompt in codebox** (triple backticks)
+- **Escape any triple backticks inside the codebox** — Use \`\`\` to prevent breaking the outer codebox
+- **NOT in scratchpad** — only in chat
+- **Keep short** (15-30 lines)
+- **Reference scratchpad** for details
+- **Update scratchpad first**
+
+### Prompt Structure
+```
+[Task Title]
+
+Context: Brief state + reference to scratchpad
+What Was Done: 3-5 bullet points
+Current Task: Clear next steps + specific files
+Guidelines: Session-specific constraints (if any - do NOT repeat .rules)
+```
+
+**Note:** Guidelines section is ONLY for session-specific overrides or additions
+the user provided in chat. Never repeat what's already in .rules file.
+
+---
+
+## Goals & Tasks Structure
+
+### Directory Structure
+```
+.agent/
+└── goals/
+    ├── scratchpad.md       # Goals tracking
+    ├── 00-Template-Goal/   # Template
+    └── 01-10-*/            # Numbered goals
+        ├── scratchpad.md
+        └── Task-01-*/
+            └── scratchpad.md
+```
+
+### Status Tracking
+- 🟢 Complete — Achieved and verified
+- 🟡 In Progress — Actively working
+- 🔴 Blocked — Waiting on dependency
+- ⚪ Not Started — Planned
+- ⚫ Archived — Abandoned
+
+### Best Practices
+- Keep scratchpads current
+- Document decisions with rationale
+- Link related tasks
+- Use acceptance criteria as checklist
+
+### Scratchpad Hierarchy & Content
+- **Goals index** (`.agent/goals/scratchpad.md`) — Central hub for all goals
+  - Goals tracking table with status and priorities
+  - Quick links to individual goal scratchpads
+  - Recent activity log
+  - **DO NOT duplicate** individual goal details
+- **Individual goal scratchpad** (`.agent/goals/NN-*/scratchpad.md`) — Goal-level planning
+  - Objectives, success criteria, architecture decisions
+  - Task breakdown and dependencies
+  - **DO NOT duplicate** task-level implementation details
+- **Task scratchpad** (`.agent/goals/NN-*/Task-NN-*/scratchpad.md`) — Implementation details
+  - Specific code changes, file modifications
+  - Test cases, edge cases
+  - Implementation notes
+- **Reference, don't duplicate** — Link to detailed scratchpads instead of copying content
+
+---
+
+## Project Organization
+
+### Hard Rules
+- **Never commit `archive/`** — gitignored, local only
+- **Use `archive/` for local files** — experiments, old versions, research
+- **Vendor submodules are read-only reference** — Never modify files in `vendor/`
+- **Python source lives in** `packages/python/src/langgraph/checkpoint/neo4j/`
+- **TypeScript source lives in** `packages/ts/src/`
+- **Tests live alongside packages** — `packages/python/tests/` and `packages/ts/tests/`
+
+### Soft Rules
+- Organize by date or topic in archive
+- Document archived decisions (ADRs)
+- Clean periodically
+
+---
+
+## Monorepo Structure
+
+### Hard Rules
+- **Bun workspace root** — `package.json` at repo root with `"workspaces": ["packages/*"]`
+- **Each package has its own** `package.json` (TS) or `pyproject.toml` (Python)
+- **Bun orchestrates everything** — `bun run test`, `bun run lint`, etc.
+- **UV manages Python** — venv at `packages/python/.venv`
+- **Nix dev shell** — `nix develop` for reproducible environment
+
+### Soft Rules
+- Keep root `package.json` scripts as the canonical command reference
+- Mirror script names across packages (`test`, `lint`, `build`)
+
+---
+
+## Nix Development
+
+### Hard Rules
+- **Bash variables in Nix strings**: `''${VAR}` not `${VAR}`
+- **No spaces in parameter expansion**: `${VAR:-default}` not `${VAR: -default}`
+- **FHS env name**: `neo4j-checkpoint-dev`
+
+### Rationale
+Nix uses `${...}` for interpolation. Escape bash variables with `''${...}`.
+
+---
+
+## Versioning
+
+### Hard Rules
+- **First version is always 0.0.1** (pyproject.toml already set)
+- **Semantic versioning**: MAJOR.MINOR.PATCH
+- **Python and TypeScript versions may differ** — they're separate packages
+- **Sync pyproject.toml version and any `__version__`**
+
+### Version Progression
+- `0.0.x` — Early iterations, API may change
+- `0.1.0` — After proven stability and full conformance test suite passing
+- `1.0.0` — Production-ready, stable API, battle-tested
+
+### Soft Rules
+- Document all releases in CHANGELOG.md
+- Git tag all releases (v0.0.1-py, v0.0.1-ts, etc.)
+- Consider pre-release versions for testing (0.1.0a1, 0.1.0rc1)
+
+### Rationale
+This is a library consumed by other projects. API stability matters. Don't rush to 1.0.0.
+
+---
+
+## Publishing
+
+### Python (PyPI)
+- Package name: `langgraph-checkpoint-neo4j`
+- Build with `uv build`
+- Publish with `uv publish` or `twine`
+
+### TypeScript (npm)
+- Package name: `@langgraph/checkpoint-neo4j` (scoped)
+- Build with `bun run build`
+- Publish with `bun publish` or `npm publish`
+
+### Hard Rules
+- **All conformance tests must pass** before publishing
+- **CHANGELOG updated** before publishing
+- **README examples verified** before publishing
+- **No debug code** in published packages
+
+---
+
+**End of .rules**
