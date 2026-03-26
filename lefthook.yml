@@ -1,0 +1,79 @@
+# Lefthook — Git hooks for langgraph-checkpoint-neo4j monorepo
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    bun-version-check:
+      run: bun run check:bun-version
+
+    python-lock-sync:
+      root: packages/python/
+      glob: "pyproject.toml"
+      run: uv lock
+      stage_fixed: true
+
+    python-lint:
+      root: packages/python/
+      glob: "*.py"
+      run: uv run ruff check --fix {staged_files} && uv run ruff format {staged_files}
+      stage_fixed: true
+
+    ts-lint:
+      root: packages/ts/
+      glob: "*.{ts,tsx}"
+      run: bunx tsc --noEmit
+
+pre-push:
+  # Sequential, fail-fast: cheap checks run first, expensive tests last.
+  # If lint fails, tests never run — saves wasted compute.
+  piped: true
+  commands:
+    # ── Stage 1: Instant checks (~0s) ──────────────────────────────
+    no-merge-commits:
+      priority: 1
+      run: |
+        # Reject merge commits — enforce rebase workflow for linear history.
+        # Checks all commits being pushed that aren't on the remote yet.
+        MERGE_COMMITS=$(git log --merges --oneline @{upstream}..HEAD 2>/dev/null)
+        if [ -n "$MERGE_COMMITS" ]; then
+          echo "❌ Merge commits detected — use rebase instead:"
+          echo "$MERGE_COMMITS"
+          echo ""
+          echo "Fix: git rebase --onto <target> <merge-base> <branch>"
+          exit 1
+        fi
+
+    # ── Stage 2: Lint & format (~2s) ──────────────────────────────
+    python-lint-check:
+      priority: 2
+      root: packages/python/
+      run: uv run --frozen ruff check . && uv run --frozen ruff format --check .
+
+    # ── Stage 3: Type checking (~3s) ──────────────────────────────
+    ts-type-check:
+      priority: 3
+      root: packages/ts/
+      run: bunx tsc --noEmit
+
+    # ── Stage 4: Tests (~30s) ─────────────────────────────────────
+    # Only reached if all fast checks above pass.
+    python-test:
+      priority: 4
+      root: packages/python/
+      run: |
+        # Source .env.local from repo root if it exists (local docker-compose port mapping)
+        if [ -f ../../.env.local ]; then
+          set -a && . ../../.env.local && set +a
+        fi
+        uv run --frozen pytest -q --tb=short
+
+    ts-test:
+      priority: 5
+      root: packages/ts/
+      run: |
+        # Source .env.local from repo root if it exists (local docker-compose port mapping)
+        if [ -f ../../.env.local ]; then
+          set -a && . ../../.env.local && set +a
+        fi
+        bun run test
