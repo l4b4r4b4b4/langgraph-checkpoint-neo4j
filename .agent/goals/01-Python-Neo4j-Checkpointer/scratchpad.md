@@ -1,8 +1,9 @@
-# Goal 01 — Python Neo4j Checkpointer (v0.0.1)
+# Goal 01 — Python Neo4j Checkpointer (v0.0.0)
 
-**Status:** 🟢 Complete
+**Status:** 🟢 Complete + Released
 **Started:** 2026-03-26
 **Completed:** 2026-03-26
+**Released:** 2026-03-26 — [PyPI](https://pypi.org/project/langgraph-checkpoint-neo4j/0.0.0/) · [GitHub Release](https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j/releases/tag/python-v0.0.0)
 **Priority:** P0 — Core deliverable
 
 ---
@@ -20,7 +21,7 @@ Implement a Neo4j-backed checkpointer for LangGraph in Python that is a drop-in 
 - [x] `from_conn_string()` factory method works like the Postgres equivalent
 - [x] Context manager protocol (`with` / `async with`) for resource cleanup
 - [x] Thread-safe — sync variant uses `threading.Lock`
-- [ ] Published to PyPI as `langgraph-checkpoint-neo4j` v0.0.1
+- [x] Published to PyPI as `langgraph-checkpoint-neo4j` v0.0.0
 - [x] README with working quick-start examples
 
 ## Architecture Decisions
@@ -245,9 +246,10 @@ Checkpointer Validation: AsyncNeo4jSaver
 | `vendor/langgraph-py/libs/checkpoint-conformance/` | Conformance test framework (`@checkpointer_test`, `validate()`, spec tests) |
 | `vendor/langgraph-py/libs/checkpoint/langgraph/checkpoint/base/__init__.py` | `BaseCheckpointSaver` — the interface we must implement |
 
-## Remaining Work
+## Remaining Work (Future Versions)
 
-- **PyPI publish** — `uv publish` when ready for release
+- ~~**PyPI publish**~~ — ✅ Published v0.0.0 to PyPI via OIDC trusted publisher
+- **Upstream parity tests** — adapt checkpoint-postgres tests for Neo4j (→ Goal 02, drives v0.0.1)
 - **Extended capabilities** — `copy_thread`, `delete_for_runs`, `prune` (optional, future)
 - **Performance** — batch Cypher queries in `_build_checkpoint_tuple` instead of per-channel lookups
 - **Connection error handling** — graceful messages when Neo4j is unreachable
@@ -607,69 +609,116 @@ Current release workflow state:
 
 ---
 
-## Next Session Priorities
+## v0.0.0 Release Session (2026-03-26) 🟢
 
-### 1. Finish CI green on PR to `feature`
-Verify that:
-- Python jobs pass in GitHub Actions with the new coverage and test updates
-- TS bootstrap is sufficient for green CI
-- `CI Success` becomes the required stable gate
+### What Was Done
 
-### 2. Merge release PR chain
-Intended flow:
-1. merge `release/python-v0.0.0` → `feature`
-2. open / merge PR from `feature` → `main`
-3. tag `python-v0.0.0`
-4. verify `release.yml` publishes to PyPI and creates GitHub Release
+#### 1. Fixed CI: TypeScript Lint Failure 🟢
 
-### 3. Apply GitHub branch protections in UI
-The JSON rulesets exist in-repo, but GitHub rules still need to be confirmed in
-the repository settings UI:
-- protect `feature`
-- protect `main`
-- require `CI Success`
-- rebase-only merge policy
-- PR required
+**Root cause:** The `lint-ts` CI job ran because root-level files changed
+(triggering the `root` change-detection filter). The job executed
+`bunx tsc --noEmit`, but `typescript` was not listed as a dependency anywhere
+— not in `packages/ts/package.json` devDependencies, not in the root
+`package.json`.
 
-### 4. Start upstream parity testing work
-The next major engineering step after `0.0.0` should be:
-- adapt upstream LangGraph Postgres checkpoint tests to Neo4j fixtures
-- run them in addition to conformance tests
-- use that work to drive `0.0.1`
+**Fix:**
+- Added `typescript` (`^5.7.0`) as devDependency to `packages/ts/package.json`
+- Regenerated `bun.lock` to include TS workspace and `typescript@5.9.3`
+- Commit: `fix(ci): add typescript devDep to TS bootstrap package`
 
-This is the right way to move from “working + released” to “high confidence
-feature parity.”
+#### 2. Fixed CI: TypeScript Test Failure 🟢
+
+**Root cause:** CI ran `bun test` (bare Bun test runner), which exits with
+code 1 when no test files are found. The TS package has no tests yet — it's
+a bootstrap placeholder.
+
+**Fix:**
+- Changed CI workflow to use `bun run test` instead of `bun test`, which
+  delegates to the `package.json` `test` script (placeholder echo)
+- Also updated root `package.json` `test:ts` script for consistency
+- Commit: `fix(ci): use 'bun run test' instead of bare 'bun test' for TS`
+
+#### 3. PR Merge Chain Completed 🟢
+
+Merge flow executed successfully:
+1. `release/python-v0.0.0` → `feature` (PR #1) — merged with all CI green
+2. `feature` → `main` (PR #2) — merged
+3. Deleted remote branches: `feature`, `release/python-v0.0.0`
+4. Cleaned up local stale branches
+5. Rebased local `main` to latest `origin/main`
+
+#### 4. Tag + Release + PyPI Publish 🟢
+
+- Tagged: `git tag python-v0.0.0 main && git push origin python-v0.0.0`
+- `release.yml` triggered automatically on tag push
+- **PyPI publish succeeded** via OIDC trusted publisher (`pypa/gh-action-pypi-publish`)
+- **GitHub Release created** automatically by `softprops/action-gh-release`
+- Package live at: https://pypi.org/project/langgraph-checkpoint-neo4j/0.0.0/
+- Release at: https://github.com/l4b4r4b4b4/langgraph-checkpoint-neo4j/releases/tag/python-v0.0.0
+
+### Final CI Status (PR #1, post-fix)
+
+| Job | Status |
+|-----|--------|
+| Detect Changes | ✅ success |
+| Python / Lint | ✅ success |
+| Python / Test | ✅ success |
+| TypeScript / Lint | ✅ success |
+| TypeScript / Test | ✅ success |
+| CI Success | ✅ success |
+
+### Published Package Details
+
+| Field | Value |
+|-------|-------|
+| Package name | `langgraph-checkpoint-neo4j` |
+| Version | `0.0.0` |
+| Python requires | `>=3.11,<4.0` |
+| Runtime deps | `langgraph-checkpoint>=2.0.0`, `neo4j>=5.0.0` |
+| License | MIT (SPDX) |
+| Artifacts | wheel (`py3-none-any`) + sdist |
+| Tag | `python-v0.0.0` |
+| Publish method | OIDC trusted publisher (GitHub Actions → PyPI) |
+
+### Branch State After Release
+
+- `main`: at `663d1bd` (tag `python-v0.0.0`)
+- `feature`: deleted (remote + local)
+- `release/python-v0.0.0`: deleted (remote + local)
+- Only branch remaining: `main`
 
 ---
 
-## Suggested Handoff Prompt for Next Session
+## What's Next: Goal 02 — Upstream Parity Testing (v0.0.1)
 
-```text
-[Goal 01 Follow-up — finalize v0.0.0 release and prepare parity testing]
+The v0.0.0 release validates that the environment, CI, and release pipeline
+work end-to-end. The checkpointer passes the official conformance suite
+(59/59 tests), but conformance tests are **necessary, not sufficient** for
+production confidence.
 
-Context: Goal 01 scratchpad is up to date in
-.agent/goals/01-Python-Neo4j-Checkpointer/scratchpad.md.
-The current release branch is release/python-v0.0.0 and a PR to feature
-already exists.
+The next milestone (`v0.0.1`) should be driven by **upstream parity testing**:
 
-What Was Done:
-- Fixed CI coverage config (`langgraph.checkpoint.neo4j` source target)
-- Added sync integration tests; Python coverage is now 87.75%
-- Bootstrapped minimal TS package for deterministic CI behavior
-- Aligned lefthook pre-push flow with fail-fast full-package checks
-- Release workflow + ruleset JSON + PyPI trusted publisher are in place
+1. **Adapt upstream checkpoint-postgres tests** from
+   `vendor/langgraph-py/libs/checkpoint-postgres/tests/` to use Neo4j fixtures
+2. **Run them alongside conformance tests** to find subtle semantic differences
+3. **Fix any failures** discovered by the parity suite
+4. **Gate v0.0.1 release** on both conformance + parity suite passing
 
-Current Task:
-1. Check PR CI status and fix any remaining GitHub Actions failures
-2. Merge release/python-v0.0.0 -> feature, then feature -> main
-3. Tag python-v0.0.0 and verify PyPI/GitHub release workflow runs
-4. Plan next task: adapt upstream checkpoint-postgres tests for Neo4j parity
+This is tracked as **Goal 02** in the goals index.
 
-Guidelines:
-- Do not lower the 72% Python coverage threshold
-- Keep 0.0.0 focused on environment/release stabilization
-- Treat upstream parity testing as the main target for 0.0.1
-```
+### Key files to study
+
+- `vendor/langgraph-py/libs/checkpoint-postgres/tests/` — upstream test suite
+- `packages/python/tests/conftest.py` — existing Neo4j fixtures
+- `packages/python/tests/test_conformance.py` — existing conformance wrapper
+
+### Other items for future sessions
+
+- Apply GitHub branch protections in UI (rulesets exist in-repo but need
+  confirmation in Settings → Rulesets)
+- Run `examples/create_agent_neo4j.py` with a real provider key
+- Consider performance improvements (batched Cypher in `_build_checkpoint_tuple`)
+- Extended capabilities: `copy_thread`, `delete_for_runs`, `prune`
 
 
 ## Release Prep Session (2026-03-26)
