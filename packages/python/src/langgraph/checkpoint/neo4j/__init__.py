@@ -25,6 +25,7 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.checkpoint.base import (
+    WRITES_IDX_MAP,
     ChannelVersions,
     Checkpoint,
     CheckpointMetadata,
@@ -177,7 +178,7 @@ class Neo4jSaver(BaseNeo4jSaver):
                 for statement in self.MIGRATIONS[version_number]:
                     session.run(statement)
                 session.run(
-                    "CREATE (m:CheckpointMigration {v: $v})",
+                    "MERGE (m:CheckpointMigration {v: $v})",
                     {"v": version_number},
                 )
 
@@ -373,10 +374,12 @@ class Neo4jSaver(BaseNeo4jSaver):
                 channel = write_param["channel"]
                 # Use UPSERT for special channels (overwrites), INSERT
                 # (idempotent no-op on conflict) for regular channels.
-                if channel in TASKS:
-                    cypher = INSERT_CHECKPOINT_WRITES_CYPHER
-                else:
+                # Matches upstream Postgres: WRITES_IDX_MAP channels
+                # (ERROR, SCHEDULED, INTERRUPT, RESUME) get UPSERT.
+                if channel in WRITES_IDX_MAP:
                     cypher = UPSERT_CHECKPOINT_WRITES_CYPHER
+                else:
+                    cypher = INSERT_CHECKPOINT_WRITES_CYPHER
                 session.run(cypher, write_param)
 
     def delete_thread(self, thread_id: str) -> None:

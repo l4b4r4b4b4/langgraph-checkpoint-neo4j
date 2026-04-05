@@ -27,6 +27,7 @@ from typing import Any
 from langchain_core.runnables import RunnableConfig
 
 from langgraph.checkpoint.base import (
+    WRITES_IDX_MAP,
     ChannelVersions,
     Checkpoint,
     CheckpointMetadata,
@@ -177,7 +178,7 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
                 for statement in self.MIGRATIONS[version_number]:
                     await session.run(statement)
                 await session.run(
-                    "CREATE (m:CheckpointMigration {v: $v})",
+                    "MERGE (m:CheckpointMigration {v: $v})",
                     {"v": version_number},
                 )
 
@@ -375,10 +376,10 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
                 channel = write_param["channel"]
                 # Use UPSERT for special channels (overwrites), INSERT
                 # (idempotent no-op on conflict) for regular channels.
-                if channel in TASKS:
-                    cypher = INSERT_CHECKPOINT_WRITES_CYPHER
-                else:
+                if channel in WRITES_IDX_MAP:
                     cypher = UPSERT_CHECKPOINT_WRITES_CYPHER
+                else:
+                    cypher = INSERT_CHECKPOINT_WRITES_CYPHER
                 await session.run(cypher, write_param)
 
     async def adelete_thread(self, thread_id: str) -> None:

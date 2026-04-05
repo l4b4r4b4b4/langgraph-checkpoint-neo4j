@@ -248,7 +248,7 @@ class Neo4jSaver extends BaseCheckpointSaver<number> {
           await session.run(statement);
         }
         await session.run(
-          "CREATE (m:CheckpointMigration {v: $v})",
+          "MERGE (m:CheckpointMigration {v: $v})",
           { v: neo4j.int(versionNumber) }
         );
       }
