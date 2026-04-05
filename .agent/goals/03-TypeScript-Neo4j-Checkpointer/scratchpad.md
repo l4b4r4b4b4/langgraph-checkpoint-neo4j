@@ -1,9 +1,9 @@
 # Goal 03 — TypeScript Neo4j Checkpointer (v0.0.1)
 
-**Status:** 🟡 In Progress
+**Status:** 🟡 In Progress — published v0.0.0, migration idempotency fix needed
 **Started:** 2026-03-26
 **Completed:** —
-**Priority:** P1 — Secondary to Python parity testing
+**Priority:** P1 — Now co-primary with Python (both need migration fix)
 **Depends on:** Goal 01 (🟢 Complete + Released)
 **Related:** Goal 02 (Python parity testing remains the primary next milestone)
 
@@ -280,7 +280,47 @@ Once we want TS work to become release-driving, CI needs a deliberate policy:
 
 ## Proposed Next Steps
 
-### Short-term next task for Goal 03
+### 🟢 DONE — Migration idempotency fix (BOTH languages)
+
+Both Python and TypeScript `setup()` methods had a **migration recording bug**
+that caused failures when tests ran against a shared Neo4j instance or when
+`setup()` was called concurrently.
+
+**Fixed in session 2026-03-26 (second session).** See session log below.
+
+#### Root cause (same in both languages)
+
+`setup()` used `CREATE (m:CheckpointMigration {v: $v})` to record each
+completed migration. This failed with a uniqueness constraint violation if the
+migration node already existed (e.g. from a prior test run that cleaned
+checkpoint data but left migration nodes, or from concurrent `setup()` calls).
+
+#### Fix applied
+
+1. Changed migration recording from `CREATE` to `MERGE` in all three files:
+   - `packages/python/src/langgraph/checkpoint/neo4j/__init__.py` (sync `setup()`)
+   - `packages/python/src/langgraph/checkpoint/neo4j/aio.py` (async `setup()`)
+   - `packages/ts/src/index.ts` (TS `setup()`)
+
+2. Fixed Python `put_writes()` UPSERT/INSERT logic (both sync and async):
+   - **Before (wrong):** `channel in TASKS` — substring check on `"__pregel_tasks"`
+   - **After (correct):** `channel in WRITES_IDX_MAP` — dict lookup matching upstream Postgres
+   - This also fixed the inverted logic: WRITES_IDX_MAP channels (ERROR, SCHEDULED,
+     INTERRUPT, RESUME) now correctly get UPSERT; everything else gets INSERT.
+
+3. **Python sync `get_tuple()` returning `None`** — resolved by the above fixes.
+   Root cause was the migration `CREATE` failures causing `setup()` to not
+   complete reliably, combined with the `put_writes` logic bug. After both
+   fixes, all 4 Python tests pass consistently.
+
+#### Verification results (fresh DB)
+
+- Python: **4/4** pass (conformance + 3 sync tests) ✅
+- TS Bun smoke: **6/6** pass ✅
+- TS Vitest validation: **714/714** pass ✅
+- Cross-language shared-DB: Python → TS without DB reset ✅
+
+### Short-term (after migration fix)
 1. Keep the split testing strategy stable:
    - `bun run test:bun` for Bun smoke/regression checks
    - Vitest/Node for upstream conformance (`714 / 714`)
@@ -295,19 +335,54 @@ Once we want TS work to become release-driving, CI needs a deliberate policy:
    - this goal scratchpad
 
 ### Medium-term
-5. Add a dedicated `packages/ts/tests/` structure
-6. Clean up package exports and build boundaries
-7. Decide when to flip `private: true` → publishable package
-8. Add npm release workflow only when functionality is release-ready
+5. Clean up package exports and build boundaries
+6. Prepare v0.0.1 release with migration fix
+7. Cross-language coexistence testing (Python + TS on same Neo4j)
 
 ### Priority guidance
-Even with the strong TS progress, **Goal 02 remains the main next milestone**:
-- Python parity testing drives the next release (`v0.0.1`)
-- TS should continue in parallel only if it does not distract from Python parity
+Both Python and TS now need the same migration idempotency fix.
+Python parity testing (Goal 02) remains important for v0.0.1, but the
+migration fix is a blocker for both languages and should be done first.
 
 ## Session Log
 
-### 2026-03-26 — Initial TypeScript implementation session 🟢
+### 2026-03-26 (session 2) — Bug fixes, put_writes correction, TS example 🟢
+
+#### What was done
+- **Bug 1 fixed:** Changed `CREATE` → `MERGE` in migration recording for all
+  three `setup()` methods (Python sync, Python async, TypeScript)
+- **Bug 2 found and fixed:** Python `put_writes()` had incorrect UPSERT/INSERT
+  logic — `channel in TASKS` (substring check on a string) instead of
+  `channel in WRITES_IDX_MAP` (dict lookup matching upstream Postgres). Also
+  fixed the inverted logic: WRITES_IDX_MAP channels should UPSERT, others INSERT.
+  Both sync and async variants fixed.
+- **Bug 3 resolved:** Python sync `get_tuple()` returning `None` was caused by
+  the migration and put_writes bugs above. After fixes, all tests pass consistently.
+- **Multi-turn chat example (TS):** Created `packages/ts/examples/multi-turn-chat.ts`
+  demonstrating: multi-turn conversation, state retrieval, checkpoint history,
+  time travel, pending writes, persistence proof (close→reopen→verify), cleanup.
+  Uses `emptyCheckpoint()` and `uuid6()` from upstream SDK for correct time-sorted IDs.
+- **Verified Python example:** `packages/python/examples/simple_agent.py` runs
+  correctly end-to-end (sync demo, async demo, persistence proof).
+- All tests verified on fresh DB + cross-language shared-DB scenario.
+
+#### Concrete outcomes
+- 3 files edited for migration fix (1-line change each)
+- 2 files edited for put_writes fix (`__init__.py` and `aio.py`)
+- `WRITES_IDX_MAP` import added to both Python modules
+- `packages/ts/examples/multi-turn-chat.ts` created (~420 lines)
+- Feature branch: `fix/migration-idempotency-and-put-writes`
+- Test results: Python 4/4, TS Bun 6/6, TS Vitest 714/714
+
+#### Files changed
+- `packages/python/src/langgraph/checkpoint/neo4j/__init__.py` — MERGE fix + put_writes fix + import
+- `packages/python/src/langgraph/checkpoint/neo4j/aio.py` — MERGE fix + put_writes fix + import
+- `packages/ts/src/index.ts` — MERGE fix
+- `packages/ts/examples/multi-turn-chat.ts` — new file
+
+---
+
+### 2026-03-26 (session 1) — Initial TypeScript implementation session 🟢
 
 #### What was done
 - Researched Bun + Neo4j ecosystem
@@ -342,38 +417,84 @@ Even with the strong TS progress, **Goal 02 remains the main next milestone**:
 - Upstream parity validation is now fully green via Vitest/Node, while Bun keeps fast local smoke confidence.
 - Release-readiness is now materially improved with workflow/package guardrails and explicit documentation.
 - Python parity remains the release-driving priority for `v0.0.1`, with TS now in a stable parallel track.
+- **v0.0.0 published** to npm as `@luke_skywalker88/langgraph-checkpoint-neo4j`
+- **Migration idempotency bug** discovered affecting both Python and TS when
+  running against a shared/reused Neo4j instance — fix is documented above.
 
 ---
 ## Handoff Notes
 
-If continuing Goal 03 in a future session, start with:
+### Status after session 2
 
-1. Read this scratchpad fully
-2. Re-run the TS validation suite against local Neo4j
-3. Focus only on the remaining 15 failures
-4. Do **not** re-implement the saver from scratch
-5. Compare failing paths with upstream TS Postgres implementation before changing logic
+All critical bugs are fixed and verified. The codebase is on feature branch
+`fix/migration-idempotency-and-put-writes` — needs PR + merge to main.
+
+#### What was completed
+- [x] Migration `CREATE` → `MERGE` fix (all 3 files)
+- [x] Python `put_writes` UPSERT/INSERT logic fix (both sync + async)
+- [x] Python sync `get_tuple()` returning `None` — resolved by above fixes
+- [x] Verified on fresh DB: Python 4/4, TS Bun 6/6, TS Vitest 714/714
+- [x] Cross-language shared-DB coexistence verified
+- [x] TS multi-turn chat example created and tested
+- [x] Python example (`simple_agent.py`) verified end-to-end
+
+#### Remaining for next session
+1. **PR + merge** — create PR from `fix/migration-idempotency-and-put-writes` → `main`
+2. **Tag releases** — `ts-v0.0.1` and `python-v0.0.1` after merge
+3. **Bump `.bun-version`** from `1.3.10` to `1.3.11` (local Bun is 1.3.11)
+4. **Optional:** Add `create_agent` example for TS (needs `@langchain/langgraph` as
+   dev dependency; currently the TS example uses raw checkpoint API which is fine)
+5. **Optional:** CHANGELOG.md entries for both packages
 
 ### Useful commands
 
 ```text
-# Start Neo4j locally
-docker compose up -d neo4j
+# Fresh Neo4j (clean volumes)
+docker compose down -v && docker compose up -d neo4j
 
 # Wait until browser endpoint responds
 curl http://localhost:7373
 
-# Typecheck
+# All tests
+NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run test
+
+# Python tests
+NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run test:python
+
+# TS Bun smoke tests
+NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run test:ts
+
+# TS upstream validation (Vitest/Node)
+NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run test:ts:validation
+
+# TS both layers
+NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run test:ts:all
+
+# Run examples
+cd packages/python && NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password uv run python examples/simple_agent.py
+cd packages/ts && NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun run examples/multi-turn-chat.ts
+
+# Linters
+cd packages/python && uv run ruff check . --fix --unsafe-fixes && uv run ruff format .
 cd packages/ts && bunx tsc --noEmit
-
-# Build
-cd packages/ts && bunx tsc
-
-# Run validation suite against local Neo4j docker-compose ports
-cd packages/ts && NEO4J_URI=bolt://localhost:7387 NEO4J_USER=neo4j NEO4J_PASSWORD=password bun test
 ```
 
 ### Current branch / repo expectations
-- TS implementation commit already exists on `main`
-- do not assume all CI is ready for TS to be release-gating yet
-- document any fix to the remaining 15 failures in this scratchpad
+- Feature branch: `fix/migration-idempotency-and-put-writes` (needs PR)
+- TS `v0.0.0` published to npm as `@luke_skywalker88/langgraph-checkpoint-neo4j`
+- Python `v0.0.0` published to PyPI as `langgraph-checkpoint-neo4j`
+- CI runs both Bun smoke + Vitest validation for TS
+- `npm` GitHub environment with `NPM_TOKEN` secret is configured
+- `pypi` GitHub environment with OIDC publishing is configured
+- Neo4j Docker image is `neo4j:2026-community` everywhere
+- **Migration idempotency fix is done** — blocker removed for v0.0.1 release
+
+### What the next session does NOT need to worry about
+- npm/PyPI publishing infrastructure — already working
+- CI/release workflow structure — already stable
+- Test runner strategy — Bun + Vitest split is settled
+- Package naming — `@luke_skywalker88/langgraph-checkpoint-neo4j` (TS), `langgraph-checkpoint-neo4j` (Python)
+- Migration idempotency — fixed
+- Python `get_tuple()` returning `None` — fixed
+- Python `put_writes` UPSERT/INSERT logic — fixed
+- Multi-turn examples — both languages have working examples
