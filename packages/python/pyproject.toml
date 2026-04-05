@@ -1,6 +1,6 @@
 [project]
 name = "langgraph-checkpoint-neo4j"
-version = "0.0.0"
+version = "0.0.1"
 description = "Neo4j checkpointer for LangGraph — drop-in replacement for the Postgres checkpointer, backed by Neo4j"
 authors = [
     { name = "Lucas Hänke de Cansino", email = "lucas.cansino@mail.de" },

@@ -1,6 +1,6 @@
 {
   "name": "@luke_skywalker88/langgraph-checkpoint-neo4j",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "private": false,
   "type": "module",
   "description": "Neo4j checkpointer for LangGraph — drop-in replacement for the Postgres checkpointer",
